@@ -1,0 +1,3 @@
+exclude: [tests,.svn,CVS,.bzr,.hg,.git,__pycache__,.tox,venv,.eggs,.pytest_cache]
+
+exi
