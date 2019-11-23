@@ -15,19 +15,27 @@ from __future__ import unicode_literals
 import logging
 import os
 from io import open
+from typing import Optional
 
 import attr
 import pytest
+from _pytest.config import Config
+from _pytest.config.argparsing import Parser
+from _pytest.main import Session
+from _pytest.python import Function
+from _pytest.reports import TestReport
+from _pytest.terminal import TerminalReporter
 
 
 logger = logging.getLogger(__name__)
 
 
 def _item_count(count):
+    # type: (int) -> str
     return "{} item{}".format(count, "" if count == 1 else "s")
 
 
-@attr.s(cmp=False)
+@attr.s(cmp=False)  # type: ignore  # Use deprecated cmp for backwards compatibility
 class SaveQuarantinePlugin(object):
     """Save the list of failing tests to a quarantine file.
 
@@ -38,11 +46,12 @@ class SaveQuarantinePlugin(object):
             The number of failed tests written to ``quarantine_path``
     """
 
-    quarantine_path = attr.ib()
+    quarantine_path = attr.ib(type=str)
     quarantine = attr.ib(init=False, default=None)
     quarantine_count = attr.ib(init=False, default=0)
 
     def pytest_sessionstart(self):
+        # type: () -> None
         """Open the quarantine for writing, creating parent directories if needed.
 
         Results in an empty file if all tests are passing, to remove previously failed
@@ -60,12 +69,14 @@ class SaveQuarantinePlugin(object):
             raise pytest.UsageError("Could not open quarantine: " + str(exc))
 
     def pytest_runtest_logreport(self, report):
+        # type: (TestReport) -> None
         """Save the ID of a failed test to the quarantine."""
         if report.failed:
             self.quarantine.write(report.nodeid + "\n")
             self.quarantine_count += 1
 
     def pytest_terminal_summary(self, terminalreporter):
+        # type: (TerminalReporter) -> None
         """Display size of quarantine after running tests."""
         terminalreporter.write_sep(
             "-",
@@ -75,13 +86,14 @@ class SaveQuarantinePlugin(object):
         )
 
     def pytest_unconfigure(self):
+        # type: () -> None
         """Close the quarantine."""
         if self.quarantine:
             self.quarantine.close()
             logger.debug("Closed " + self.quarantine_path)
 
 
-@attr.s(cmp=False)
+@attr.s(cmp=False)  # type: ignore  # Use deprecated cmp for backwards compatibility
 class QuarantinePlugin(object):
     """Mark each test listed in a quarantine file as xfail.
 
@@ -92,12 +104,13 @@ class QuarantinePlugin(object):
         marked_ids (Set[int]): The ID's of collected tests marked as xfail
     """
 
-    quarantine_path = attr.ib()
-    verbose = attr.ib()
+    quarantine_path = attr.ib(type=str)
+    verbose = attr.ib(type=bool)
     quarantine_ids = attr.ib(init=False, factory=set)
     marked_ids = attr.ib(init=False, factory=set)
 
     def pytest_sessionstart(self, session):
+        # type: (Session) -> None
         """Read test ID's from a file into the quarantine."""
         try:
             with open(self.quarantine_path, encoding="utf-8") as f:
@@ -106,12 +119,15 @@ class QuarantinePlugin(object):
             raise pytest.UsageError("Could not open quarantine: " + str(exc))
 
     def pytest_itemcollected(self, item):
+        # type: (Function) -> None
         """Mark a test as xfail if its ID is in the quarantine."""
         if item.nodeid in self.quarantine_ids:
             item.add_marker(pytest.mark.xfail(reason="Quarantined"))
             self.marked_ids.add(item.nodeid)
+        return None
 
     def pytest_report_collectionfinish(self):
+        # type: () -> Optional[str]
         """Display number of quarantined items before running tests."""
         if self.verbose >= 0:
             return "added mark.xfail to {} of {} from {}".format(
@@ -119,9 +135,11 @@ class QuarantinePlugin(object):
                 _item_count(len(self.quarantine_ids)),
                 self.quarantine_path,
             )
+        return None
 
 
 def pytest_configure(config):
+    # type: (Config) -> None
     """Register the plugin functionality."""
     save_quarantine_path = config.getoption("save_quarantine")
     if save_quarantine_path:
@@ -138,6 +156,7 @@ def pytest_configure(config):
 
 
 def pytest_addoption(parser):
+    # type: (Parser) -> None
     """Add command line options to the 'quarantine' group."""
     group = parser.getgroup("quarantine")
 

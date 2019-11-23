@@ -77,3 +77,4 @@ target/
 # pytest-quarantine development
 quarantine.txt
 .quarantine
+.mypy_cache
