@@ -3,6 +3,7 @@ branch = true
 source =
     pytest_quarantine
     tests
+dynamic_context = test_function
 
 [paths]
 # Enable `coverage combine` to convert long `.tox/**/site-packages` paths to
@@ -11,3 +12,6 @@ source =
 source =
     src/
     */site-packages/
+
+[html]
+show_contexts = true
